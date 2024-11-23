@@ -1,0 +1,64 @@
+# this file must be named meta.yaml, and it must be saved in the same folder
+# as the ojs files and python scripts.
+# All of the lines starting with a hash mark are comments and are ignored.
+# Remember to leave a blank space after the colons, and do not add any
+# more colons in the text
+# Each entry must be on one line, with the exception of the judges award list
+tournament_name: 2024 Virginia DC Regional Championship Tournament
+#
+#
+#
+# File names for ojs spreadsheets. Leave blank if not needed
+div1_ojs_file: vadc-fll-challenge-submerged-ojs-State-Championship-Div1.xlsm
+div2_ojs_file: 
+#
+#
+# This is the filename for the cocmpleted script file which will be generated
+# from this program. Probably just leave it alone.
+complete_script_file: 2024-vadc-fll-challenge-submerged-championship-div1-script.html
+#
+#
+#
+# Number of places, such as 1st, 2nd, 3rd
+# For example, if there will be a 1st, 2nd, and 3rd place award for
+# robot game, then set that value to 3
+# Set to 0 if not needed; don't delete any rows
+Division 1 Robot Game: 3
+Division 1 Innovation Project: 3
+Division 1 Core Values: 3
+Division 1 Robot Design: 3
+Division 1 Champions: 3
+Division 1 Advancing: 4
+Division 2 Robot Game: 0
+Division 2 Innovation Project: 0
+Division 2 Core Values: 0
+Division 2 Robot Design: 0
+Division 2 Champions: 0
+Division 2 Advancing: 0
+#
+#
+#
+# Special guests
+# introduce any sponsors, local dignitaries, or other special 
+# guests - include titles and affiliations, and any other text you want to say
+# Leave blank if you don't have any special guests
+# For example:
+# Special Guests: All the way from Gotham City, Batman and Robin!
+Special Guests: TBD
+#
+#
+#
+# Edit judges award info after deliberation
+# Make sure this matches the number of awardees below
+Judges Awards: 2
+# Indent each line with two spaces
+# Also end each line with </p>
+# If you have a 0 above for Judges Awards, this entry will be ignored, but don't delete it.
+Judges Awardees: >
+  57671 Super Scuba Bots</p>
+#
+#
+#
+# Edit volunteer award after deliberation
+Volunteer Awardee: Flash
+Volunteer Justification: Quickly helped with setup, and takedown
