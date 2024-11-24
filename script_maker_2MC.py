@@ -8,14 +8,19 @@ import warnings
 # pip install Jinja2
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-speaker1: str="<p style=\"background-color:magenta;\"><b>Barry: </b>"
-speaker2: str="<p style=\"background-color:aqua;\"><b>Andrew: </b>"
-current_speaker: str = speaker1
+SPEAKER_1: str="<p style=\"background-color:magenta;\"><b>Barry: </b>"
+SPEAKER_2: str="<p style=\"background-color:aqua;\"><b>Andrew: </b>"
+TEMPLATE_FILE: str = "script_template-2MC.html.jinja"
+YAML_DATA_FILE: str = "meta.yaml"
+AWARDS: dict[str, str] = {
+    "Champions": "",
+    "Innovation Project": "",
+    "Robot Design": "",
+    "Core Values": "",
+}
+ORDINALS: list[str] = ["1st", "2nd", "3rd", "4th", "5th"]
 
-def selectSpeaker() -> str:
-    global current_speaker
-    current_speaker = speaker1 if current_speaker == speaker2 else speaker2
-    return current_speaker
+current_speaker: str = SPEAKER_1
 
 # To create windows exe executable, run
 # .venv\Scripts\pyinstaller.exe -F script_maker.py
@@ -25,79 +30,84 @@ def selectSpeaker() -> str:
 
 print("Building Closing Ceremony script")
 
-templateLoader = FileSystemLoader(searchpath="./")
-templateEnv = Environment(loader=templateLoader)
-TEMPLATE_FILE: str = "script_template-2MC.html.jinja"
-template = templateEnv.get_template(TEMPLATE_FILE)
+template_loader = FileSystemLoader(searchpath="./")
+template_env = Environment(loader=template_loader)
+try:
+    template = template_env.get_template(TEMPLATE_FILE)
+except:
+    print(f"Template not found: {TEMPLATE_FILE}")
+    quit()
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
-yaml_data_file: str = "meta.yaml"
+print("Opening yaml data file: " + YAML_DATA_FILE)
+try:
+    with open(YAML_DATA_FILE) as f:
+        dict = yaml.load(f, Loader=yaml.FullLoader)
+except:
+    print(f"There was an error opening the meta file: {YAML_DATA_FILE}")
+    quit()
 
-ordinals = ["1st", "2nd", "3rd", "4th", "5th"]
-
-print("Opening yaml data file: " + yaml_data_file)
-with open(yaml_data_file) as f:
-    dict = yaml.load(f, Loader=yaml.FullLoader)
-
-awards = {
-    "Champions": "",
-    "Innovation Project": "",
-    "Robot Design": "",
-    "Core Values": "",
-}
 rg_html = {}
 dataframes = {}
-# divAwards key will be 1 and/or 2, and the value will be the awardHtml dictionaries
+# divAwards key will be 1 and/or 2, and the value will be the award_html dictionaries
 # yes, it is a dictionary of dictionaries
-divAwards = {}
-divAwards[1] = {}
-divAwards[2] = {} 
+# I'm not proud of it
+div_awards = {}
+div_awards[1] = {}
+div_awards[2] = {} 
 # awardHtml key will be the award name, and the values will be the html
-awardHtml = {}
-advancingDf = {}
-advancingHtml = {}
-awardCounts = {}
+award_html = {}
+advancing_df = {}
+advancing_html = {}
+award_counts = {}
 
 divisions = [1, 2]
 removing = []
 for div in divisions:
     if dict["div" + str(div) + "_ojs_file"] is not None:
-        dataframes[div] = pd.read_excel(
-            dict["div" + str(div) + "_ojs_file"],
-            sheet_name="Results and Rankings",
-            header=1,
-            usecols=[
-                "Team Number",
-                "Team Name",
-                "Max Robot Game Score",
-                "Robot Game Rank",
-                "Award",
-                "Advance?",
-            ],
-        )
+        try:
+            ojs_filename = dict["div" + str(div) + "_ojs_file"]
+            print(f"Reading OJS file {ojs_filename}")
+            dataframes[div] = pd.read_excel(
+                ojs_filename,
+                sheet_name="Results and Rankings",
+                header=1,
+                usecols=[
+                    "Team Number",
+                    "Team Name",
+                    "Max Robot Game Score",
+                    "Robot Game Rank",
+                    "Award",
+                    "Advance?",
+                ],
+            )
+        except Exception as e:
+            print(f"There was a problem reading the excel OJS file: {ojs_filename}")
+            print(repr(e))
+            quit()
     else:
         # make a list of the elements to remove
         # I can't just remove the element from divisions[] while iterating
         # on it because the loops will end early
         removing.append(div)
         rg_html[div] = ""
-        awardHtml[div] = ""
-        divAwards[div]["Robot Design"] = ""
-        divAwards[div]["Innovation Project"] = ""
-        divAwards[div]["Core Values"] = ""
-        divAwards[div]["Champions"] = ""
-        advancingHtml[div] = ""
+        award_html[div] = ""
+        div_awards[div]["Robot Design"] = ""
+        div_awards[div]["Innovation Project"] = ""
+        div_awards[div]["Core Values"] = ""
+        div_awards[div]["Champions"] = ""
+        advancing_html[div] = ""
 
-for award in awards:
-    awardCounts[award] = 0
+for award in AWARDS:
+    award_counts[award] = 0
 
 # now that we are done looping over the divisions, remove any items
 # that were marked for deletion
 # print(removing)
-print("We have these divisions: " + str(divisions))
 for item in removing:
     divisions.remove(item)
+print("We have these divisions: " + str(divisions))
 print("Get the top robot game scores")
 # print(divisions)
 # Robot Game
@@ -105,73 +115,92 @@ for div in divisions:
     rg_html[div] = ""
     print("Getting top scores for division " + str(div))
     for i in reversed(range(int(dict["Division " + str(div) + " Robot Game"]))):
-        print(ordinals[i] + " Place")
-        teamNum = int(
-            dataframes[div].loc[
-                dataframes[div]["Robot Game Rank"] == i + 1, "Team Number"
+        print(ORDINALS[i] + " Place")
+        try:
+            team_num = int(
+                dataframes[div].loc[
+                    dataframes[div]["Robot Game Rank"] == i + 1, "Team Number"
+                ].iloc[0]
+            )
+            team_name = dataframes[div].loc[
+                dataframes[div]["Robot Game Rank"] == i + 1, "Team Name"
             ].iloc[0]
-        )
-        teamName = dataframes[div].loc[
-            dataframes[div]["Robot Game Rank"] == i + 1, "Team Name"
-        ].iloc[0]
-        score = int(
-            dataframes[div].loc[
-                dataframes[div]["Robot Game Rank"] == i + 1, "Max Robot Game Score"
-            ].iloc[0]
-        )
+            score = int(
+                dataframes[div].loc[
+                    dataframes[div]["Robot Game Rank"] == i + 1, "Max Robot Game Score"
+                ].iloc[0]
+            )
+        except Exception as e:
+            print(f"There was an error getting the robot game scores for Division {div}")
+            print(repr(e))
+            quit()
+
+        current_speaker = SPEAKER_1 if current_speaker == SPEAKER_2 else SPEAKER_2
         rg_html[div] += (
-            selectSpeaker()
+            current_speaker
             + "With a score of "
             + str(score)
             + " points, the Division " + str(div) + " "
-            + ordinals[i]
+            + ORDINALS[i]
             + " place award goes to team number "
-            + str(int(teamNum))
+            + str(int(team_num))
             + ", "
-            + teamName
+            + team_name
             + "</p>\n"
         )
 
 # print(rg_html)
 # Judged awards
 for div in divisions:
-    divAwards[div] = {}
+    div_awards[div] = {}
     print("Getting awards for division " + str(div))
-    for award in awards.keys():
+    for award in AWARDS.keys():
         print("Getting the " + award + " award")
-        divAwards[div][award] = ""
-        awardCounts[award] += int(dict["Division " + str(div) + " " + award])
+        div_awards[div][award] = ""
+        award_counts[award] += int(dict["Division " + str(div) + " " + award])
         for i in reversed(range(int(dict["Division " + str(div) + " " + award]))):
             # divAwards[div][award] = ""
-            print(award + " " + ordinals[i] + " Place")
-            teamNum = int(
-                dataframes[div].loc[
-                    dataframes[div]["Award"] == award + " " + ordinals[i],
-                    "Team Number",
+            print(award + " " + ORDINALS[i] + " Place")
+            try:
+                team_num = int(
+                    dataframes[div].loc[
+                        dataframes[div]["Award"] == award + " " + ORDINALS[i],
+                        "Team Number",
+                    ].iloc[0]
+                )
+                team_name = dataframes[div].loc[
+                    dataframes[div]["Award"] == award + " " + ORDINALS[i],
+                    "Team Name",
                 ].iloc[0]
-            )
-            teamName = dataframes[div].loc[
-                dataframes[div]["Award"] == award + " " + ordinals[i],
-                "Team Name",
-            ].iloc[0]
-            thisText = (
-                selectSpeaker()
+            except Exception as e:
+                print(f"There was an error getting the {award} award for Division {div}")
+                print(repr(e))
+                quit()
+
+            current_speaker = SPEAKER_1 if current_speaker == SPEAKER_2 else SPEAKER_2
+            this_text = (
+                current_speaker
                 + "The Division " + str(div) + " "
-                + ordinals[i]
+                + ORDINALS[i]
                 + " place " + award + " award goes to team number "
-                + str(int(teamNum))
+                + str(int(team_num))
                 + ", "
-                + teamName
+                + team_name
                 + "</p>\n"
             )
-            divAwards[div][award] += thisText
+            div_awards[div][award] += this_text
 
 print("Getting the advancing teams")
 # Advancing
 for div in divisions:
-    advancingDf[div] = dataframes[div][dataframes[div]["Advance?"] == "Yes"][
-        ["Team Number", "Team Name"]
-    ]
+    try:
+        advancing_df[div] = dataframes[div][dataframes[div]["Advance?"] == "Yes"][
+            ["Team Number", "Team Name"]
+        ]
+    except Exception as e:
+        print(f"There was an error getting the advancing teams for Division {div}")
+        print(repr(e))
+        quit()
 
 # print(advancingDf[1])
 # print(advancingDf[2])
@@ -182,15 +211,16 @@ for div in divisions:
 # # print(div2advancingDict["Team Name"])
 
 for div in divisions:
-    advancingHtml[div] = ""
+    advancing_html[div] = ""
     # print(advancingDf[div])
-    for index, row in advancingDf[div].iterrows():
+    for index, row in advancing_df[div].iterrows():
         try:
-            teamNum = str(int(row['Team Number']))
+            team_num = str(int(row['Team Number']))
         except:
-            teamNum = ""
-        teamName = row["Team Name"]
-        advancingHtml[div] += selectSpeaker() + "(Div " + str(div) + ") Team number " + teamNum + ", " + teamName + "</p>\n"
+            team_num = ""
+        team_name = row["Team Name"]
+        current_speaker = SPEAKER_1 if current_speaker == SPEAKER_2 else SPEAKER_2
+        advancing_html[div] += current_speaker + "(Div " + str(div) + ") Team number " + team_num + ", " + team_name + "</p>\n"
 
 ja_count = int(dict["Judges Awards"])
 
@@ -201,25 +231,25 @@ out_text = template.render(
     volunteer_awardee_name = dict["Volunteer Awardee"],
     rg_div1_list = rg_html[1],
     rg_div2_list = rg_html[2],
-    rd_div1_list = divAwards[1]["Robot Design"],
-    rd_div2_list = divAwards[2]["Robot Design"],
-    rd_this_them = "This team" if awardCounts["Robot Design"] == 1 else "These teams",
-    ip_div1_list = divAwards[1]["Innovation Project"],
-    ip_div2_list = divAwards[2]["Innovation Project"],
-    ip_this_them = "This team" if awardCounts["Innovation Project"] == 1 else "These teams",
-    cv_div1_list = divAwards[1]["Core Values"],
-    cv_div2_list = divAwards[2]["Core Values"],
-    cv_this_them = "This team" if awardCounts["Core Values"] == 1 else "These teams",
+    rd_div1_list = div_awards[1]["Robot Design"],
+    rd_div2_list = div_awards[2]["Robot Design"],
+    rd_this_them = "This team" if award_counts["Robot Design"] == 1 else "These teams",
+    ip_div1_list = div_awards[1]["Innovation Project"],
+    ip_div2_list = div_awards[2]["Innovation Project"],
+    ip_this_them = "This team" if award_counts["Innovation Project"] == 1 else "These teams",
+    cv_div1_list = div_awards[1]["Core Values"],
+    cv_div2_list = div_awards[2]["Core Values"],
+    cv_this_them = "This team" if award_counts["Core Values"] == 1 else "These teams",
     ja_count = ja_count,
     ja_list = str(dict["Judges Awardees"]),
     ja_go_goes = "The Judges Awards go to teams" if ja_count > 1 else "The Judges Award goes to team",
     special_guests = str(dict["Special Guests"]),
-    champ_div1_list = divAwards[1]["Champions"],
-    champ_div2_list = divAwards[2]["Champions"],
-    adv_div1_list = advancingHtml[1],
-    adv_div2_list = advancingHtml[2],
-    spkr1 = speaker1,
-    spkr2 = speaker2
+    champ_div1_list = div_awards[1]["Champions"],
+    champ_div2_list = div_awards[2]["Champions"],
+    adv_div1_list = advancing_html[1],
+    adv_div2_list = advancing_html[2],
+    spkr1 = SPEAKER_1,
+    spkr2 = SPEAKER_2
 )
 
 # print(out_text)
